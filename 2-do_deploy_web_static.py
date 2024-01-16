@@ -19,8 +19,11 @@ def do_deploy(archive_path):
     Returns:
         True if all operations were successful, otherwise returns False
     """
+    print("Starting the deployment process.")
+
     # Check if the archive_path exists
-    if not exists(archive_path):
+    if exists(archive_path) is False:
+        print(f"Archive path {archive_path} does not exist.")
         return False
 
     # Extract the file name and the name without extension
@@ -32,8 +35,10 @@ def do_deploy(archive_path):
     release_dir = f"/data/web_static/releases/{name_without_ext}/"
 
     try:
+        print(f"Uploading the archive {archive_path} to {remote_tmp_path}.")
         # Upload the archive to the /tmp/ directory of the web server
         put(archive_path, remote_tmp_path)
+        print(f"Archive uploaded.")
         # Uncompress the archive in the release directory on the web server
         run(f"mkdir -p {release_dir}")
         run(f"tar -xzf {remote_tmp_path} -C {release_dir}")
@@ -48,11 +53,14 @@ def do_deploy(archive_path):
         run(f"rm -rf {release_dir}web_static")
 
         # Delete the current symbolic link
-        run(f"rm -rf /data/web_static/current")
+        run('rm -rf /data/web_static/current')
 
         # Create a new symbolic link to the new release dir
         run(f"ln -s {release_dir} /data/web_static/current")
 
+        print("New version deployed!")
+
         return True
     except Exception as e:
+        print(e)
         return False

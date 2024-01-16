@@ -41,6 +41,3 @@ def do_pack():
     if os.path.exists(archive_path):
         return archive_path
     return None
-
-
-archive_path = do_pack()
