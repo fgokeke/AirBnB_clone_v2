@@ -1,66 +1,73 @@
 #!/usr/bin/python3
+""" These methods aid in deploying the web_static directory
+to the remote servers
 """
-Fabric script that creates and distributes an archive to web servers
-"""
-
-
-from fabric.api import env, local, put, run
-from datetime import datetime
+from fabric.api import *
 import os
-from os.path import isdir, exists
+from datetime import datetime
 
-
-# servers' IP addresses
 env.hosts = ['54.237.117.225', '34.207.156.91']
 
 
+@runs_once
 def do_pack():
+    """This method will pack the web_static dir into a tar.gz
+    for deployinment to remote servers.
+
+    Addtionally this methos will stash all archive into a directory
+    call 'versions'
     """
-    Generates a .tgz archive from the contents of the web_static folder.
-    """
-    if not isdir("versions"):
-        os.mkdir("versions")
-    date_stamp = datetime.now().strftime("%Y%m%d%H%M%S")
-    archive_path = "versions/web_static_{}.tgz".format(date_stamp)
-    local("tar -cvzf {} web_static".format(archive_path))
-    if exists(archive_path):
-        return archive_path
-    return None
+    if not os.path.exists(os.path.dirname("./web_static")):
+        return None
+
+    if not os.path.exists(os.path.dirname("versions")):
+        try:
+            local("mkdir -p versions")
+        except Exception as e:
+            print(e)
+            return None
+    file_name = "web_static_{}.tgz".format(
+        datetime.now().strftime("%Y%m%d%H%M%S")
+    )
+    local("tar cpfz {} ./web_static".format(file_name))
+    local("mv {f} versions/{f}".format(f=file_name))
+    return "versions/{}".format(file_name)
 
 
 def do_deploy(archive_path):
+    """ this method will deploy compressed file
+    then unpack and move the content to is proper destination
+
+    Returns:
+        Bool: True on sucess well Fale
     """
-    Distributes an archive to web servers
-    """
-    if not exists(archive_path):
-        return False
-    file_name = archive_path.split("/")[-1]
-    name_without_ext = file_name.split(".")[0]
-    remote_tmp_path = "/tmp/{}".format(file_name)
-    release_dir = "/data/web_static/releases/{}/".format(name_without_ext)
     try:
-        put(archive_path, remote_tmp_path)
-        run("mkdir -p {}".format(release_dir))
-        run("tar -xzf {} -C {}".format(remote_tmp_path, release_dir))
-        run("rm {}".format(remote_tmp_path))
-        run("mv {}/web_static/* {}".format(release_dir, release_dir))
-        run("rm -rf {}/web_static".format(release_dir))
-        run("rm -rf /data/web_static/current")
-        run("ln -s {} /data/web_static/current".format(release_dir))
-        return True
-    except Exception as e:
+        open(archive_path)
+    except IOError:
         return False
+    split_path = archive_path.split('/')
+    cln_name = split_path[1][0:split_path[1].rfind('.')]
+    dest = '/data/web_static'
+    put(archive_path, "/tmp/")
+    with cd("/tmp/"):
+        run('tar xpf {}'.format(split_path[1]))
+        run('mv web_static {}/releases/{}'.format(dest, cln_name))
+        run('rm -rf {}'.format(split_path[1]))
+
+    with cd(dest):
+        run('rm {}/current'.format(dest))
+        run('ln -s {d}/releases/{t} {d}/current'
+            .format(d=dest, t=cln_name))
+    print('New version deployed!')
+    return True
 
 
 def deploy():
+    """this method will pack and deploy
     """
-    Create and distribute an archive to the web servers
-    """
-    archive_path = do_pack()
-    if archive_path is None:
-        return False
-    return do_deploy(archive_path)
-
-
-if __name__ == "__main__":
-    deploy()
+    path = do_pack()
+    print(path)
+    if path:
+        dp = do_deploy(path)
+        return dp
+    return False
