@@ -7,6 +7,7 @@ if ! command -v nginx >/dev/null 2>&1; then
 	sudo apt-get install -y nginx
 fi
 
+
 # Create the necessary directories
 sudo mkdir -p /data/web_static/releases/test /data/web_static/shared
 
