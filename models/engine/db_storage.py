@@ -14,6 +14,7 @@ from models.place import Place
 from models.review import Review
 from models.amenity import Amenity
 
+
 class DBStorage:
     """Defines the DBStorage class for database storage"""
     __engine = None
@@ -33,7 +34,6 @@ class DBStorage:
 
         if env == 'test':
             Base.metadata.drop_all(self.__engine)
-
 
     def all(self, cls=None):
         """Query objects from the current database session"""
@@ -73,3 +73,7 @@ class DBStorage:
         Base.metadata.create_all(self.__engine)
         self.__session = scoped_session(sessionmaker(bind=self.__engine,
                                         expire_on_commit=False))()
+
+    def close(self):
+        """Call remove() on the session"""
+        self.__session.remove()
